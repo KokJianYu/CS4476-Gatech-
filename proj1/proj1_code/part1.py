@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+import math
 
 
 def create_Gaussian_kernel(cutoff_frequency):
@@ -29,8 +30,17 @@ def create_Gaussian_kernel(cutoff_frequency):
   ############################
   ### TODO: YOUR CODE HERE ###
 
-  raise NotImplementedError('`create_Gaussian_kernel` function in '
-    + '`student_code.py` needs to be implemented')
+  k = 4 * cutoff_frequency + 1
+  mean = k // 2
+  std = cutoff_frequency
+  # I am assuming the range is [mean - k/2, mean + k/2]
+  x_range = np.arange(start = mean - k//2, stop = mean + k//2 + 1)
+  # Apply 1D gaussian formula
+  gkernel_1d = 1/(np.sqrt(2*np.pi)*std) * np.exp( (-1/(2*std**2) * (x_range-mean)**2) )
+  # outer product to get 2d
+  kernel = np.outer(gkernel_1d, gkernel_1d) 
+  # normalize value to get values that sum to 1
+  kernel = (1 / kernel.sum()) * kernel
 
   ### END OF STUDENT CODE ####
   ############################
@@ -62,9 +72,19 @@ def my_imfilter(image, filter):
 
   ############################
   ### TODO: YOUR CODE HERE ###
-
-  raise NotImplementedError('`my_imfilter` function in `student_code.py` ' +
-    'needs to be implemented')
+  filter_row_size = filter.shape[0]
+  filter_col_size = filter.shape[1]
+  padded_input_image = np.pad(image, ((filter_row_size//2, filter_row_size//2), (filter_col_size//2, filter_col_size//2), (0,0)), "constant")
+  filtered_image = np.empty(image.shape)
+  for k in range(padded_input_image.shape[2]):
+    for j in range(padded_input_image.shape[1]):
+      if padded_input_image.shape[1] - j < filter_col_size:
+        break
+      for i in range(padded_input_image.shape[0]):
+        if padded_input_image.shape[0] - i < filter_row_size:
+          break
+        filtered_image[i, j, k] = np.multiply(filter, padded_input_image[i:i+filter_row_size, j:j+filter_col_size, k]).sum()
+        
 
   ### END OF STUDENT CODE ####
   ############################
@@ -106,9 +126,14 @@ def create_hybrid_image(image1, image2, filter):
 
   ############################
   ### TODO: YOUR CODE HERE ###
+  low_frequencies = my_imfilter(image1, filter)
+  # low_frequencies = (1/low_frequencies.sum()) * low_frequencies
+  high_frequencies = image2 - my_imfilter(image2, filter)
+  #high_frequencies = (1/high_frequencies.sum()) * high_frequencies
+  hybrid_image = (high_frequencies+low_frequencies)
+  hybrid_image = np.clip(hybrid_image, 0, 1)
+  #hybrid_image = hybrid_image / hybrid_image.max()
 
-  raise NotImplementedError('`create_hybrid_image` function in ' +
-    '`student_code.py` needs to be implemented')
 
   ### END OF STUDENT CODE ####
   ############################

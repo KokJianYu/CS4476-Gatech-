@@ -33,9 +33,15 @@ def make_dataset(path: str) -> Tuple[List[str],List[str]]:
 
   ############################
   ### TODO: YOUR CODE HERE ###
-
-  raise NotImplementedError('`make_dataset` function in `datasets.py` needs '
-    + 'to be implemented')
+  images_a = []
+  images_b = []
+  paths = os.listdir(path)
+  paths.sort()
+  for fname in paths:
+    if "a_" in fname:
+      images_a.append("{}/{}".format(path,fname))
+    elif "b_" in fname:
+      images_b.append("{}/{}".format(path,fname))
 
   ### END OF STUDENT CODE ####
   ############################
@@ -57,16 +63,11 @@ def get_cutoff_frequencies(path: str) -> List[int]:
   - cutoff_frequencies: numpy array of ints. The array should have the same
     length as the number of image pairs in the dataset
   """
-
   ############################
   ### TODO: YOUR CODE HERE ###
-
-  raise NotImplementedError('`get_cutoff_frequencies` function in '
-    + '`datasets.py` needs to be implemented')
-
+  cutoff_frequencies = np.loadtxt(path)
   ### END OF STUDENT CODE ####
   ############################
-
   return cutoff_frequencies
 
 
@@ -94,9 +95,7 @@ class HybridImageDataset(data.Dataset):
     self.transform = None
     ############################
     ### TODO: YOUR CODE HERE ###
-
-    raise NotImplementedError('`self.transform` function in `datasets.py` needs to '
-      + 'be implemented')
+    self.transform = transforms.ToTensor()
 
     ### END OF STUDENT CODE ####
     ############################
@@ -111,8 +110,7 @@ class HybridImageDataset(data.Dataset):
     ############################
     ### TODO: YOUR CODE HERE ###
 
-    raise NotImplementedError('`__len__` function in `datasets.py` needs to '
-      + 'be implemented')
+    return len(self.images_a)
 
     ### END OF STUDENT CODE ####
     ############################
@@ -143,11 +141,18 @@ class HybridImageDataset(data.Dataset):
 
     ############################
     ### TODO: YOUR CODE HERE ###
-
-    raise NotImplementedError('`__getitem__ function in `datasets.py` needs '
-      + 'to be implemented')
-
+    image_a_path = self.images_a[idx]
+    image_b_path = self.images_b[idx]
+    image_a = np.asarray(PIL.Image.open(image_a_path))
+    image_b = np.asarray(PIL.Image.open(image_b_path))
+    image_a_normed = image_a/255
+    image_b_normed = image_b/255
+    # image_a_normed = np.transpose(image_a_normed, (2,0,1))
+    # image_a_normed = np.transpose(image_b_normed, (2,0,1))
+    image_a = self.transform(image_a_normed)
+    image_b = self.transform(image_b_normed)
+    cutoff_frequency = self.cutoff_frequencies[idx]
     ### END OF STUDENT CODE ####
     ############################
 
-    return image_a, image_b, cutoff_frequency
+    return image_a.float(), image_b.float(), cutoff_frequency

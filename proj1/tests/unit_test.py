@@ -308,6 +308,8 @@ def verify_hybrid_image_np(image1, image2, kernel, hybrid_image) -> bool:
 		print('Success! Hybrid image values are correct.')
 		return True
 	else:
+		print(158339.52, hybrid_interior.sum())
+		print(hybrid_image[100:102,100:102,:], gt_hybrid_crop)
 		print('Hybrid image values are not correct, please double check your implementation.')
 		return False
 
