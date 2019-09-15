@@ -68,18 +68,16 @@ def get_gaussian_kernel(ksize=7, sigma=5) -> torch.nn.Parameter:
 
     ############################
     ### TODO: YOUR CODE HERE ###
-    
-    x_range = range(ksize)
+    x_range = np.array(range(ksize))
     mean = ksize // 2
     gaussian_1d = 1/np.sqrt(2*np.pi*sigma) * np.exp(-1/(2*(sigma**2)) * (x_range - mean)**2)
     gaussian_2d = np.outer(gaussian_1d, gaussian_1d) 
     # normalize value to get values that sum to 1
     gaussian_2d = (1 / gaussian_2d.sum()) * gaussian_2d
-    tensor_2d = torch.from_numpy(gaussian_2d)   
-    # TODO: remove print
-    print(tensor_2d)
+    gaussian_2d = gaussian_2d.reshape(1,1,ksize,ksize)
+    gaussian_2d = np.tile(gaussian_2d, (3,1,1,1))
+    tensor_2d = torch.from_numpy(gaussian_2d).float()
     kernel = torch.nn.Parameter(tensor_2d)
-    print(kernel)
 
     # TODO: Remove this for good
     # raise NotImplementedError('`get_gaussian_kernel` need to be '
@@ -108,13 +106,11 @@ def get_sobel_xy_parameters() -> torch.nn.Parameter:
 
     ############################
     ### TODO: YOUR CODE HERE ###
-    filter_sobel_x = np.asarray([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]).reshape((1, 3, 3))
-    filter_sobel_y = np.asarray([[-1, -2, -1], [0, 0, 0], [1, 2, 1]]).reshape((1, 3, 3))
-    filter_combined = np.concatenate(filter_sobel_x, filter_sobel_y, axis=0)
-    kernel = torch.from_numpy(filter_combined) 
+    filter_sobel_x = np.asarray([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]]).reshape((1, 1, 3, 3))
+    filter_sobel_y = np.asarray([[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]]).reshape((1, 1, 3, 3))
+    filter_combined = np.concatenate((filter_sobel_x, filter_sobel_y), axis=0)
+    kernel = torch.from_numpy(filter_combined).float()
     kernel = torch.nn.Parameter(kernel) 
-
     ### END OF STUDENT CODE ####
     ############################
-
     return kernel

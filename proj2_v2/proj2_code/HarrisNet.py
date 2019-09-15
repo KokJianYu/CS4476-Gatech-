@@ -75,10 +75,17 @@ class HarrisNet(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`HarrisNet.__init__` function in '
-             + '`HarrisNet.py` needs to be implemented')
-        self.net = None # <--replace this with your implementation
+        corner_response_layer = CornerResponseLayer()
+        channel_product_layer = ChannelProductLayer()
+        second_moment_matrix_layer = SecondMomentMatrixLayer()
+        nms_layer = NMSLayer()
+        self.net = torch.nn.Sequential(
+            image_gradients_layer,
+            channel_product_layer,
+            second_moment_matrix_layer,
+            corner_response_layer, 
+            nms_layer,
+        )
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -132,9 +139,12 @@ class ChannelProductLayer(torch.nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`ChannelProductLayer` need to be '
-            + 'implemented')
+        ix = x[:,0].reshape(x.shape[0],1,x.shape[2],x.shape[3])
+        iy = x[:,1].reshape(x.shape[0],1,x.shape[2],x.shape[3])
+        ixx = torch.mul(ix, ix)
+        ixy = torch.mul(ix, iy)
+        iyy = torch.mul(iy, iy)
+        output = torch.cat((ixx, iyy, ixy), 1)
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -171,8 +181,13 @@ class SecondMomentMatrixLayer(torch.nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        raise NotImplementedError('`SecondMomentMatrixLayer` need to be '
-            + 'implemented')
+        # Create convolutional layer
+        self.conv2d = nn.Conv2d(in_channels=3, out_channels=3, kernel_size=self.ksize,
+            bias=False, padding=(self.ksize//2,self.ksize//2), padding_mode='zeros', groups=3)
+
+        # Instead of learning weight parameters, here we set the filter to be
+        # Sobel filter
+        self.conv2d.weight = get_gaussian_kernel(self.ksize, self.sigma)
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -199,8 +214,7 @@ class SecondMomentMatrixLayer(torch.nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        raise NotImplementedError('`SecondMomentMatrixLayer` needs to be '
-            + 'implemented')
+        output = self.conv2d(x)
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -245,9 +259,13 @@ class CornerResponseLayer(torch.nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`CornerResponseLayer` needs to be ''
-            + 'implemented')
+        sxx = x[:,0]
+        syy = x[:,1]
+        sxy = x[:,2]
+        det = torch.mul(sxx, syy) - torch.mul(sxy, sxy)
+        trace = (sxx + syy)
+        output = det - self.alpha * (torch.mul(trace,trace))
+        #raise NotImplementedError('`CornerResponseLayer` needs to be implemented')
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -297,10 +315,13 @@ class NMSLayer(torch.nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`NMSLayer` needs to be implemented')
-
-
+        median = torch.median(x)
+        x = torch.where(x <= median, torch.tensor(0).float(), x)
+        k = 7
+        self.maxpool2d = nn.MaxPool2d(k, stride=1, padding=(k//2, k//2))
+        mp = self.maxpool2d(x)
+        binarized = torch.where(mp == x, torch.tensor(1).float(), torch.tensor(0).float())
+        output = torch.mul(binarized, x)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -342,17 +363,16 @@ def get_interest_points(image: torch.Tensor, num_points: int = 4500) -> Tuple[to
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`get_interest_points` in `HarrisNet.py needs `
-        + 'be implemented')
+    
+    #raise NotImplementedError('`get_interest_points` in `HarrisNet.py needs be implemented')
 
     # This dummy code will compute random score for each pixel, you can
     # uncomment this and run the project notebook and see how it detects random
     # points.
-    # x = torch.randint(0,image.shape[3],(num_points,))
-    # y = torch.randint(0,image.shape[2],(num_points,))
+    x = torch.randint(0,image.shape[3],(num_points,))
+    y = torch.randint(0,image.shape[2],(num_points,))
 
-    # confidences = torch.arange(num_points,0,-1)
+    confidences = torch.arange(num_points,0,-1)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -382,8 +402,7 @@ def remove_border_vals(img, x: torch.Tensor, y: torch.Tensor, c: torch.Tensor) -
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
 
-    raise NotImplementedError('`remove_border_vals` in `HarrisNet.py` needs '
-        + 'to be implemented')
+    raise NotImplementedError('`remove_border_vals` in `HarrisNet.py` needs to be implemented')
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
