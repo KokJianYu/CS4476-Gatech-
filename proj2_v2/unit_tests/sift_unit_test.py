@@ -124,6 +124,7 @@ def test_HistogramLayer():
 				[ 0.3000]
 			]
 		])
+	print(f)
 	assert torch.allclose(f, gt_f, atol=1e-3)
 
 
@@ -204,7 +205,6 @@ def test_SubGridAccumulationLayer():
 	for i in range(5):
 		for j in range(6):
 			per_px_histogram[0,:,i,j] = torch.arange(i, i+8)
-
 	accum_hists = sg_acc_layer(per_px_histogram)
 
 	accum_hists.shape ==  (1, 8, 6, 7)
@@ -277,10 +277,9 @@ def test_get_sift_subgrid_coords():
 				x_2x2_e, 
 				y_2x2_s, 
 				y_2x2_e)
-
-			# print(f'{x_2x2_s} <= x < {x_2x2_e}, {y_2x2_s} <= y < {y_2x2_e}')
+			#print(f'{x_2x2_s} <= x < {x_2x2_e}, {y_2x2_s} <= y < {y_2x2_e}')
 			assert count == 1
-
+ 
 			
 def test_get_siftnet_features():
 	"""

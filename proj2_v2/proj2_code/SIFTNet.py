@@ -123,10 +123,16 @@ class HistogramLayer(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`HistogramLayer.forward` function in '
-            + '`student_sift.py` needs to be implemented')
-
+        binary_occupancy = torch.zeros_like(cosines)
+        cosine_max = torch.argmax(cosines, dim=1).flatten()
+        grad_mag = torch.sqrt(im_grads[:,0,:,:]**2 + im_grads[:,1,:,:]**2)
+        dim0 = torch.arange(0, cosines.shape[0])
+        dim2 = torch.arange(0, cosines.shape[2])
+        dim3 = torch.arange(0, cosines.shape[3])
+        dim0, dim1 = torch.meshgrid(dim0, cosine_max)
+        dim2, dim3 = torch.meshgrid(dim2, dim3)
+        binary_occupancy[dim0.flatten(), dim1.flatten(), dim2.flatten(), dim3.flatten()] = torch.tensor(1).float()
+        per_px_histogram = torch.mul(binary_occupancy, grad_mag)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -162,10 +168,8 @@ class SubGridAccumulationLayer(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`__init__ in `SubGridAccumulationLayer` '
-          + 'needs to be implemented')
-
+        self.layer = torch.nn.Conv2d(in_channels=8, out_channels=8, kernel_size=4, stride=1, padding=(2,2), groups=8)
+        self.layer.weight = torch.nn.Parameter(torch.ones(8,1,4,4))
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -180,7 +184,6 @@ class SubGridAccumulationLayer(nn.Module):
         Returns:
         -   out: Torch tensor representing an (b,c,m,n) layer, where b=1, c=8
         """
-
         return self.layer(x)
 
 
@@ -200,10 +203,10 @@ def angles_to_vectors_2d_pytorch(angles: torch.Tensor) -> torch.Tensor:
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`angles_to_vectors_2d_pytorch` needs to be '
-      + 'implemented')
-
+    n = angles.shape[0]
+    x = torch.cos(angles).reshape(n,1)
+    y = torch.sin(angles).reshape(n,1)
+    angle_vectors = torch.cat((x,y),1)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -235,8 +238,10 @@ class SIFTOrientationLayer(nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        raise NotImplementedError('`__init__` in `SIFTOrientationLayer` needs '
-          + 'to be implemented')
+        self.layer = nn.Conv2d(in_channels=2, out_channels=10, kernel_size=1,
+            bias=False)
+
+        self.layer.weight = self.get_orientation_bin_weights()
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -265,8 +270,11 @@ class SIFTOrientationLayer(nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        raise NotImplementedError('`get_orientation_bin_weights` needs to be '
-          + 'implemented')
+        # The angles are midpoints between the 8 directions
+        angles = torch.arange(np.pi/8, 2*np.pi, (2*np.pi) / 8)
+        t = torch.tensor([[1, 0],[0, 1]]).float()
+        angles_vector = torch.cat((angles_to_vectors_2d_pytorch(angles), t)).reshape((10,2,1,1))
+        weight_param = torch.nn.Parameter(angles_vector)
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -307,9 +315,16 @@ class SIFTNet(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-
-        raise NotImplementedError('`__init__` in `SIFTNet` needs to be '
-          + 'implemented')
+        image_gradients_layer = ImageGradientsLayer()
+        sift_orientation_layer = SIFTOrientationLayer()
+        histogram_layer = HistogramLayer()
+        subgrid_accumulation_layer = SubGridAccumulationLayer()
+        self.net = torch.nn.Sequential(
+            image_gradients_layer,
+            sift_orientation_layer,
+            histogram_layer,
+            subgrid_accumulation_layer,
+        )
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -350,14 +365,15 @@ def get_sift_subgrid_coords(x_center: int, y_center: int):
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`get_sift_subgrid_coords` needs to be '
-      + 'implemented')
-
+    x_grid = np.zeros((16), np.int32)
+    y_grid = np.zeros((16), np.int32)
+    for i in range(4):
+        for j in range(4):
+            x_grid[j + (i*4)] = x_center - 8 + (i * 4) + 2
+            y_grid[j + (i*4)] = y_center - 8 + (j * 4) + 2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-
     return x_grid, y_grid
 
 
@@ -389,8 +405,8 @@ def get_siftnet_features(img_bw: torch.Tensor, x: np.ndarray, y: np.ndarray) -> 
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`get_siftnet_features` needs to be implemented')
+    
+    fvs = np.zeros(1)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #

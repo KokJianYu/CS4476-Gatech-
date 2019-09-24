@@ -106,7 +106,6 @@ class HarrisNet(nn.Module):
         """
         assert x.dim() == 4, \
             "Input should have 4 dimensions. Was {}".format(x.dim())
-
         return self.net(x)
 
 
@@ -145,7 +144,6 @@ class ChannelProductLayer(torch.nn.Module):
         ixy = torch.mul(ix, iy)
         iyy = torch.mul(iy, iy)
         output = torch.cat((ixx, iyy, ixy), 1)
-
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -215,7 +213,6 @@ class SecondMomentMatrixLayer(torch.nn.Module):
         #######################################################################
 
         output = self.conv2d(x)
-
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -266,7 +263,7 @@ class CornerResponseLayer(torch.nn.Module):
         trace = (sxx + syy)
         output = det - self.alpha * (torch.mul(trace,trace))
         #raise NotImplementedError('`CornerResponseLayer` needs to be implemented')
-
+        output = output.reshape(x.shape[0],1,x.shape[2],x.shape[3])
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -363,16 +360,23 @@ def get_interest_points(image: torch.Tensor, num_points: int = 4500) -> Tuple[to
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-    
-    #raise NotImplementedError('`get_interest_points` in `HarrisNet.py needs be implemented')
-
+    flatten_R = R.reshape(R.shape[0], R.shape[1]*R.shape[2]*R.shape[3])
+    num_nonzero = flatten_R.nonzero().shape[0]
+    sorted, indices = torch.sort(flatten_R,dim=1,descending=True)
+    confidences = sorted[:, :min(num_nonzero,num_points)].flatten()
+    indices = indices[:, :min(num_nonzero,num_points)]
+    y = indices // R.shape[3]
+    x = indices - indices // R.shape[3] * R.shape[3]
+    x = x[0]
+    y = y[0]
+    x,y,confidences = remove_border_vals(image, x, y, confidences)
     # This dummy code will compute random score for each pixel, you can
     # uncomment this and run the project notebook and see how it detects random
     # points.
-    x = torch.randint(0,image.shape[3],(num_points,))
-    y = torch.randint(0,image.shape[2],(num_points,))
+    # x = torch.randint(0,image.shape[3],(num_points,))
+    # y = torch.randint(0,image.shape[2],(num_points,))
 
-    confidences = torch.arange(num_points,0,-1)
+    # confidences = torch.arange(num_points,0,-1)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -401,8 +405,14 @@ def remove_border_vals(img, x: torch.Tensor, y: torch.Tensor, c: torch.Tensor) -
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`remove_border_vals` in `HarrisNet.py` needs to be implemented')
+    index_x = (x >= 8) & (x <= img.shape[3]-8)
+    x = x[index_x]
+    y = y[index_x]
+    c = c[index_x]
+    index_y = (y >= 8) & (y <= img.shape[2]-8)
+    x = x[index_y]
+    y = y[index_y]
+    c = c[index_y]
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
