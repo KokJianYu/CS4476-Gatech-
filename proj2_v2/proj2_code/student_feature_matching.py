@@ -19,9 +19,12 @@ def compute_feature_distances(features1, features2):
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`match_features` function in ' +
-        '`student_feature_matching.py` needs to be implemented')
+    dists = np.empty((features1.shape[0], features2.shape[0]))
+    for m in range(features2.shape[0]):
+      features2_row = features2[m,:]
+      features2_row_tile = np.tile(features2_row, (features1.shape[0],1))
+      dist = np.linalg.norm(features1 - features2_row_tile, axis = 1)
+      dists[:, m] = dist
 
     ###########################################################################
     #                             END OF YOUR CODE                            #

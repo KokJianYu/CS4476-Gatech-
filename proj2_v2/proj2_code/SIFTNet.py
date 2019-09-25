@@ -168,7 +168,8 @@ class SubGridAccumulationLayer(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-        self.layer = torch.nn.Conv2d(in_channels=8, out_channels=8, kernel_size=4, stride=1, padding=(2,2), groups=8)
+        self.layer = torch.nn.Conv2d(in_channels=8, out_channels=8, kernel_size=4, stride=1, padding=(2,2), padding_mode="zeros"
+        , groups=8, bias=False)
         self.layer.weight = torch.nn.Parameter(torch.ones(8,1,4,4))
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -271,7 +272,7 @@ class SIFTOrientationLayer(nn.Module):
         #######################################################################
 
         # The angles are midpoints between the 8 directions
-        angles = torch.arange(np.pi/8, 2*np.pi, (2*np.pi) / 8)
+        angles = torch.arange(np.pi/8, 2*np.pi, (np.pi) / 4)
         t = torch.tensor([[1, 0],[0, 1]]).float()
         angles_vector = torch.cat((angles_to_vectors_2d_pytorch(angles), t)).reshape((10,2,1,1))
         weight_param = torch.nn.Parameter(angles_vector)
@@ -369,8 +370,10 @@ def get_sift_subgrid_coords(x_center: int, y_center: int):
     y_grid = np.zeros((16), np.int32)
     for i in range(4):
         for j in range(4):
-            x_grid[j + (i*4)] = x_center - 8 + (i * 4) + 2
-            y_grid[j + (i*4)] = y_center - 8 + (j * 4) + 2
+            # x value represent columns
+            x_grid[j + (i*4)] = x_center - 8 + (j * 4) + 2
+            # y value represent rows
+            y_grid[j + (i*4)] = y_center - 8 + (i * 4) + 2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -405,11 +408,16 @@ def get_siftnet_features(img_bw: torch.Tensor, x: np.ndarray, y: np.ndarray) -> 
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-    
-    fvs = np.zeros(1)
-
+    features = net(img_bw)
+    fvs = np.zeros((x.shape[0], 128))
+    for i in range(x.shape[0]):
+        # Get the value of the 16 coordinates from get_sift_subgrid_coords, append them tgt.
+        x_coors, y_coors = get_sift_subgrid_coords(x[i], y[i])
+        fvs[i] = features[0, :, y_coors, x_coors].t().flatten().detach().numpy()
+        norm_value = np.linalg.norm(fvs[i])
+        fvs[i] = np.divide(fvs[i], norm_value)
+        fvs[i] = np.power(fvs[i], 0.9)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-
     return fvs
