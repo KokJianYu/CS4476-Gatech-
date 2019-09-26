@@ -262,7 +262,6 @@ class CornerResponseLayer(torch.nn.Module):
         det = torch.mul(sxx, syy) - torch.mul(sxy, sxy)
         trace = (sxx + syy)
         output = det - self.alpha * (torch.mul(trace,trace))
-        #raise NotImplementedError('`CornerResponseLayer` needs to be implemented')
         output = output.reshape(x.shape[0],1,x.shape[2],x.shape[3])
         #######################################################################
         #                           END OF YOUR CODE                          #

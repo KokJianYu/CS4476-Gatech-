@@ -70,9 +70,28 @@ def match_features(features1, features2, x1, y1, x2, y2):
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`match_features` function in ' +
-        '`student_feature_matching.py` needs to be implemented')
+    dists = compute_feature_distances(features1, features2)
+    sort_by_dist_idx = np.argsort(dists, axis=1)[:, :2]
+    
+    feature_row = np.arange(dists.shape[0])
+    feature_col_1 = sort_by_dist_idx[:, 0]
+    feature_col_2 = sort_by_dist_idx[:, 1]
+    # calculate nndr
+    nndr = dists[feature_row, feature_col_1] / dists[feature_row, feature_col_2]
+    # sort nndr
+    nndr_index = np.argsort(nndr)
+    nndr = nndr[nndr_index]
+    # get index with nndr above threshold of 0.8
+    # magic number :\
+    valid_index = nndr <= 0.8
+    # make 2d array of (feature1, feature2)
+    matches = np.vstack((feature_row, feature_col_1)).transpose()
+    # sort by confidence
+    matches = matches[nndr_index]
+    # remove values above threshold
+    matches = matches[valid_index]
+    
+    confidences = nndr[valid_index]
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
