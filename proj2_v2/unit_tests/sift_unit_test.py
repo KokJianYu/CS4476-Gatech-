@@ -220,7 +220,6 @@ def test_SubGridAccumulationLayer():
 				[324., 486., 648., 648., 648., 486., 324.]
 			]
 		])
-	print(accum_hists.sum(dim=2))
 	assert torch.allclose(accum_hists.sum(dim=2), gt_accum_hists_sum, atol=5)
 
 
@@ -292,7 +291,6 @@ def test_get_siftnet_features():
 	img_bw = img_bw.type(torch.FloatTensor)
 
 	features = get_siftnet_features(img_bw, x, y)
-	print(features.sum())
 	assert np.allclose(features.sum(), 22.039, atol=1)
 	assert features.shape == (4, 128)
 
@@ -303,7 +301,6 @@ def test_get_siftnet_features():
 			[0.27522191, 0.12444288],
 			[0.        , 0.23030874]
 		])
-	print(features[:,64:66])
 	assert np.allclose(features[:,64:66], gt_feat_crop)
 
 
@@ -320,7 +317,6 @@ def test_SIFTNet():
 	net = SIFTNet()
 	per_px_8dim_feat = net(img_bw)
 	assert [1, 8, 17, 17] == [per_px_8dim_feat.shape[i] for i in range(4)]
-	print(per_px_8dim_feat.detach().sum())
 	assert torch.allclose(per_px_8dim_feat.detach().sum(), torch.tensor(768899.5000), atol=5)
 
 

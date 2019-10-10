@@ -7,7 +7,7 @@ import time
 import torch
 
 from torch import nn
-from proj2_code.torch_layer_utils import ImageGradientsLayer
+from proj3_code.feature_matching.torch_layer_utils import ImageGradientsLayer
 
 
 """
@@ -123,16 +123,61 @@ class HistogramLayer(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-        binary_occupancy = torch.zeros_like(cosines)
-        cosine_max = torch.argmax(cosines, dim=1).flatten()
-        grad_mag = torch.sqrt(im_grads[:,0,:,:]**2 + im_grads[:,1,:,:]**2)
-        dim0 = torch.arange(0, cosines.shape[0])
-        dim2 = torch.arange(0, cosines.shape[2])
-        dim3 = torch.arange(0, cosines.shape[3])
-        dim0, dim1 = torch.meshgrid(dim0, cosine_max)
-        dim2, dim3 = torch.meshgrid(dim2, dim3)
-        binary_occupancy[dim0.flatten(), dim1.flatten(), dim2.flatten(), dim3.flatten()] = torch.tensor(1).float()
-        per_px_histogram = torch.mul(binary_occupancy, grad_mag)
+
+        # raise NotImplementedError('`HistogramLayer.forward` function in '
+        #     + '`student_sift.py` needs to be implemented')
+
+        start = time.time()
+        bin_idxs = torch.argmax(cosines, dim=1)
+        magnitudes = torch.norm(im_grads, dim=1)
+
+        img_h = x.shape[2]
+        img_w = x.shape[3]
+
+        per_px_histogram = torch.zeros_like(cosines)
+
+        method = 'fully_vectorized' #'triple_for_loop' # 'double_for_loop' #
+        if method == 'triple_for_loop':
+            bin_idxs = bin_idxs.squeeze()
+            magnitudes = magnitudes.squeeze()
+            for c in range(8): # channels
+                for i in range(img_h): # height
+                    for j in range(img_w): # width
+                        if c == bin_idxs[i,j]:
+                            per_px_histogram[0,c,i,j] = magnitudes[i,j]
+
+        elif method == 'double_for_loop':
+            bin_idxs = bin_idxs.squeeze()
+            magnitudes = magnitudes.squeeze()
+            for i in range(img_h): # height
+                for j in range(img_w): # width
+                    c = bin_idxs[i,j]
+                    per_px_histogram[0,c,i,j] = magnitudes[i,j]
+
+        elif method == 'fully_vectorized':
+            bins_one_hot = torch.zeros_like(cosines)
+
+            # batch dim will always be one, so index in with zeros.
+            dim1_idxs = bin_idxs.flatten() # max in each channel, at each (x,y) location
+            num_px = dim1_idxs.shape[0]
+            dim0_idxs = torch.zeros(num_px).type(torch.LongTensor)
+
+            img_h = x.shape[2]
+            img_w = x.shape[3]
+            grid_y, grid_x = torch.meshgrid(torch.arange(img_h),
+                torch.arange(img_w))
+
+            dim2_idxs = grid_y.flatten().type(torch.LongTensor)
+            dim3_idxs = grid_x.flatten().type(torch.LongTensor)
+            bins_one_hot[ dim0_idxs, dim1_idxs, dim2_idxs, dim3_idxs ] = 1
+
+            magnitudes = magnitudes.unsqueeze(0).repeat(1,8,1,1)
+            per_px_histogram = torch.mul(magnitudes, bins_one_hot)
+
+        end = time.time()
+        duration = end - start
+        print(f'Took {duration}')
+
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -168,10 +213,17 @@ class SubGridAccumulationLayer(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-        k = 4 # Only works if k is even
-        self.layer = torch.nn.Conv2d(in_channels=8, out_channels=8, kernel_size=k, stride=1, padding=k//2, padding_mode="zeros"
-        , groups=8, bias=False)
-        self.layer.weight = torch.nn.Parameter(torch.ones(8,1,k,k))
+
+        # raise NotImplementedError('`__init__ in `SubGridAccumulationLayer` '
+        #   + 'needs to be implemented')
+
+        self.layer = nn.Conv2d(in_channels=8, out_channels=8, kernel_size=4,
+            bias=False, padding=(2,2), padding_mode='zeros', groups=8)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.constant_(m.weight, 1.)
+
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -186,7 +238,7 @@ class SubGridAccumulationLayer(nn.Module):
         Returns:
         -   out: Torch tensor representing an (b,c,m,n) layer, where b=1, c=8
         """
-        print(self.layer(x).shape)
+
         return self.layer(x)
 
 
@@ -206,10 +258,15 @@ def angles_to_vectors_2d_pytorch(angles: torch.Tensor) -> torch.Tensor:
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-    n = angles.shape[0]
-    x = torch.cos(angles).reshape(n,1)
-    y = torch.sin(angles).reshape(n,1)
-    angle_vectors = torch.cat((x,y),1)
+
+    # raise NotImplementedError('`angles_to_vectors_2d_pytorch` needs to be '
+    #   + 'implemented')
+
+    dx = torch.cos(angles)
+    dy = torch.sin(angles)
+
+    angle_vectors = torch.cat([dx.reshape(-1,1), dy.reshape(-1,1)], 1)
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -241,10 +298,17 @@ class SIFTOrientationLayer(nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        self.layer = nn.Conv2d(in_channels=2, out_channels=10, kernel_size=1,
-            bias=False)
+        # raise NotImplementedError('`__init__` in `SIFTOrientationLayer` needs '
+        #   + 'to be implemented')
 
-        self.layer.weight = self.get_orientation_bin_weights()
+        self.layer = nn.Conv2d(in_channels=2, out_channels=10, kernel_size=1,
+            bias=False, padding=(0,0), padding_mode='zeros')
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # 1x1 conv with dot products
+                # get (10, 2, 1, 1)
+                m.weight = self.get_orientation_bin_weights()
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -273,11 +337,17 @@ class SIFTOrientationLayer(nn.Module):
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
 
-        # The angles are midpoints between the 8 directions
-        angles = torch.arange(np.pi/8, 2*np.pi, (np.pi) / 4)
-        t = torch.tensor([[1, 0],[0, 1]]).float()
-        angles_vector = torch.cat((angles_to_vectors_2d_pytorch(angles), t)).reshape((10,2,1,1))
-        weight_param = torch.nn.Parameter(angles_vector)
+        # raise NotImplementedError('`get_orientation_bin_weights` needs to be '
+        #   + 'implemented')
+
+        theta_edges = torch.linspace(0, 2 * np.pi, steps=9)[:-1]
+        # since cosine similarity bin would be from [-pi/8,pi/8], we shift it to [0,pi/4]
+        theta_edges += np.pi/8
+        edge_vectors = angles_to_vectors_2d_pytorch(theta_edges).type(torch.FloatTensor)
+
+        eye_2d = torch.from_numpy(np.eye(2)).type(torch.FloatTensor)
+        weight_mat = torch.cat([edge_vectors, eye_2d], dim=0)
+        weight_param = torch.nn.Parameter(weight_mat.reshape(10,2,1,1))
 
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -318,15 +388,22 @@ class SIFTNet(nn.Module):
         #######################################################################
         # TODO: YOUR CODE HERE                                                #
         #######################################################################
-        image_gradients_layer = ImageGradientsLayer()
-        sift_orientation_layer = SIFTOrientationLayer()
-        histogram_layer = HistogramLayer()
-        subgrid_accumulation_layer = SubGridAccumulationLayer()
-        self.net = torch.nn.Sequential(
-            image_gradients_layer,
-            sift_orientation_layer,
-            histogram_layer,
-            subgrid_accumulation_layer,
+
+        # raise NotImplementedError('`__init__` in `SIFTNet` needs to be '
+        #   + 'implemented')
+
+        # (1) Conv layer to compute image gradients with two directed Sobel filters.
+        # (2) Conv layer to project image gradients along 8 basis directions, and to
+        #   replicate the gradient values for the subsequent histogram computation.
+        # (3) HistogramLayer
+        # (4) Conv layer to accumulate 4x4 neighborhoods.
+        # Using default stride=1 for all layers.
+
+        self.net = nn.Sequential(
+            ImageGradientsLayer(),
+            SIFTOrientationLayer(),
+            HistogramLayer(),
+            SubGridAccumulationLayer()
         )
 
         #######################################################################
@@ -368,17 +445,21 @@ def get_sift_subgrid_coords(x_center: int, y_center: int):
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-    x_grid = np.zeros((16), np.int32)
-    y_grid = np.zeros((16), np.int32)
-    for i in range(4):
-        for j in range(4):
-            # x value represent columns
-            x_grid[j + (i*4)] = x_center - 8 + (j * 4) + 2
-            # y value represent rows
-            y_grid[j + (i*4)] = y_center - 8 + (i * 4) + 2
+
+    # raise NotImplementedError('`get_sift_subgrid_coords` needs to be '
+    #   + 'implemented')
+
+    x = np.linspace(x_center-6, x_center+6, 4)
+    y = np.linspace(y_center-6, y_center+6, 4)
+    x_grid, y_grid = np.meshgrid(x, y)
+
+    x_grid = x_grid.flatten().astype(np.int64)
+    y_grid = y_grid.flatten().astype(np.int64)
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
+
     return x_grid, y_grid
 
 
@@ -406,20 +487,35 @@ def get_siftnet_features(img_bw: torch.Tensor, x: np.ndarray, y: np.ndarray) -> 
     assert img_bw.dtype == torch.float32
 
     net = SIFTNet()
-    
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-    features = net(img_bw)
-    fvs = np.zeros((x.shape[0], 128))
-    for i in range(x.shape[0]):
-        # Get the value of the 16 coordinates from get_sift_subgrid_coords, append them tgt.
-        x_coors, y_coors = get_sift_subgrid_coords(x[i], y[i])
-        fvs[i] = features[0, :, y_coors, x_coors].t().flatten().detach().numpy()
-        norm_value = np.linalg.norm(fvs[i])
-        fvs[i] = np.divide(fvs[i], norm_value)
-        fvs[i] = np.power(fvs[i], 0.9)
+
+    # raise NotImplementedError('`get_siftnet_features` needs to be implemented')
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
+
+
+    ##### TO REMOVE: SOLUTION BELOW ####################################
+    # Can also get this by maxpool with 1x1 window, stride 4 ? but how to combine after?
+    # Have to do 16 times, at each offset in a 4x4.
+
+    histogram_grids_per_px = net(img_bw)
+    histogram_grids_per_px = histogram_grids_per_px.detach().squeeze().permute(1,2,0)
+
+    num_interest_pts = x.shape[0]
+    fvs = np.zeros((num_interest_pts, 128))
+
+    for i, (x_center, y_center) in enumerate(zip(x,y)):
+        x_subgrid, y_subgrid = get_sift_subgrid_coords(x_center, y_center)
+        fvs[i,:] = histogram_grids_per_px[ y_subgrid, x_subgrid, :].flatten().numpy()
+
+    # normalize feature vectors to unit length
+    fvs /= np.linalg.norm(fvs, axis=1, keepdims=True)
+
+    # raise to power
+    fvs **= 0.9
+    ####################################################################
     return fvs
