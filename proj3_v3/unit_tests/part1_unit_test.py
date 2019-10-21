@@ -47,7 +47,6 @@ def test_projection():
                              [  0,   0,   1, 120]])
     
     projected_2D = projection(dummy_matrix, test_3D)
-
     assert projected_2D.shape == test_2D.shape    
     assert np.allclose(projected_2D, test_2D, atol=1e-8)
 
@@ -119,7 +118,6 @@ def test_decompose_camera_matrix():
 
     K, R = decompose_camera_matrix(test_input)
     
-
     assert K.shape == test_K.shape and R.shape == test_R.shape
 
     assert np.allclose(test_R, R, atol=1e-8)
@@ -145,7 +143,7 @@ def test_calculate_camera_center():
     test_cc = np.array([-18.27559442, -13.32677465,  20.48757872])
 
     cc = calculate_camera_center(test_input, test_K, test_R)
-
+    print(cc)
     assert cc.shape == test_cc.shape
 
     assert np.allclose(test_cc, cc, atol=1e-8)

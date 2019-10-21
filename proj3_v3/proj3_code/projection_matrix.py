@@ -29,9 +29,13 @@ def objective_func(x, **kwargs):
     
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+    points_2d = kwargs["pts2d"]
+    points_3d = kwargs["pts3d"]
+    x = np.append(x, 1)
+    p = x.reshape((3,4))
+    projected_2d = projection(p, points_3d)
+    diff = (projected_2d - points_2d).flatten()
     ##############################
-      
     return diff
 
 def projection(P: np.ndarray, points_3d: np.ndarray) -> np.ndarray:
@@ -50,7 +54,23 @@ def projection(P: np.ndarray, points_3d: np.ndarray) -> np.ndarray:
     
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+    
+    # if not homogenous, convert it to be homogenous
+    if points_3d.shape[1] == 3:
+        padding = np.ones((points_3d.shape[0], 1))
+        points_3d = np.hstack((points_3d, padding))
+
+    p0 = P[0,:]
+    p1 = P[1,:]
+    p2 = P[2,:]
+
+    p0 = np.multiply(points_3d, p0).sum(axis=1)
+    p1 = np.multiply(points_3d, p1).sum(axis=1)
+    p2 = np.multiply(points_3d, p2).sum(axis=1)
+
+    x = np.divide(p0, p2).reshape((points_3d.shape[0],1))
+    y = np.divide(p1, p2).reshape((points_3d.shape[0],1))
+    projected_points_2d = np.hstack((x, y))
     ##############################
     
     return projected_points_2d
@@ -93,7 +113,15 @@ def estimate_camera_matrix(pts2d: np.ndarray,
      
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+    kwargs = {
+        "pts2d":pts2d, 
+        "pts3d":pts3d
+    }
+    initial_guess = initial_guess.flatten()
+    if initial_guess.shape[0] >= 12:
+        initial_guess = initial_guess[:11]
+    result = least_squares(objective_func, initial_guess, method="lm", verbose=2, max_nfev=50000, kwargs = kwargs)
+    M = np.append(result.x, 1).reshape((3,4))
     ##############################
     
     print("Time since optimization start", time.time() - start_time)
@@ -117,7 +145,8 @@ def decompose_camera_matrix(P: np.ndarray) -> (np.ndarray, np.ndarray):
     
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+    M = P[:, :3]
+    K,R = rq(M)
     ##############################
     
     return K, R
@@ -138,7 +167,11 @@ def calculate_camera_center(P: np.ndarray,
 
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+
+    KR = np.matmul(K, R_T)
+    I_T = np.matmul(np.linalg.inv(KR), P)
+    cc = I_T[:, -1] * -1
+
     ##############################
 
     return cc

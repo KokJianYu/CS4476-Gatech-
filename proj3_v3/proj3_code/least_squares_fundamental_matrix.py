@@ -35,7 +35,8 @@ def optimize(p0, x_0s, x_1s):
     
     ##############################
     # TODO: Student code goes here
-    raise NotImplementedError
+    result = least_squares(objective_function, p0, jac='2-point', args=(x_0s, x_1s))
+    #raise NotImplementedError
     ##############################
 
     optimized_F = result.x
