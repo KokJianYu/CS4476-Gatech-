@@ -105,7 +105,7 @@ def test_nearest_neighbor_classify():
 
     # print(labels)
 
-    assert labels == gt_labels
+    assert (labels == gt_labels).all()
 
 
 def test_nearest_neighbor_classify_k():
@@ -125,7 +125,7 @@ def test_nearest_neighbor_classify_k():
 
     gt_labels = np.zeros((1, 2))
 
-    # print(labels)
+    print(labels)
 
     assert (labels == gt_labels).all()
 
